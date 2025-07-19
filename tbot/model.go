@@ -1,0 +1,32 @@
+package tbot
+
+import "context"
+
+type BotSettings struct {
+	Token      string `envconfig:"BOT_TOKEN"`
+	Pass       string `envconfig:"PASSWORD"`
+	MosELogin  string `envconfig:"MOS_ENERG_LOGIN"`
+	MosEPass   string `envconfig:"MOS_ENERG_PASS"`
+	MosRULogin string `envconfig:"MOS_RU_LOGIN"`
+	MosRUPass  string `envconfig:"MOS_RU_PASS"`
+}
+
+type meter struct {
+	Water       map[string]float64
+	Electricity map[string]float64
+	ChatID      int64
+}
+
+type IMosenergosbyt interface {
+	SetReadings(T1, T2, T3 int) error
+	Auth() error
+}
+
+type IMos interface {
+	SendReadingsWater(ctx context.Context) error
+	GetMeters(ctx context.Context) ([]string, error)
+}
+
+type IAI interface {
+	GetWaterMeter(imgPath string) (float64, error)
+}
