@@ -1,14 +1,18 @@
 package tbot
 
-import "context"
+import (
+	"context"
+	"meter_readings/deepseek"
+)
 
 type BotSettings struct {
-	Token      string `envconfig:"BOT_TOKEN"`
-	Pass       string `envconfig:"PASSWORD"`
-	MosELogin  string `envconfig:"MOS_ENERG_LOGIN"`
-	MosEPass   string `envconfig:"MOS_ENERG_PASS"`
-	MosRULogin string `envconfig:"MOS_RU_LOGIN"`
-	MosRUPass  string `envconfig:"MOS_RU_PASS"`
+	Token       string `envconfig:"BOT_TOKEN"`
+	Pass        string `envconfig:"PASSWORD"`
+	MosELogin   string `envconfig:"MOS_ENERG_LOGIN"`
+	MosEPass    string `envconfig:"MOS_ENERG_PASS"`
+	MosRULogin  string `envconfig:"MOS_RU_LOGIN"`
+	MosRUPass   string `envconfig:"MOS_RU_PASS"`
+	DeepseekAPI string `envconfig:"DEEPSEEK_API_KEY"`
 }
 
 type meter struct {
@@ -29,4 +33,8 @@ type IMos interface {
 
 type IAI interface {
 	GetWaterMeter(imgPath string) (float64, error)
+}
+
+type IDeepseek interface {
+	GetReminderCharacteristics(msgText string) (*deepseek.ReminderCharacteristics, error)
 }

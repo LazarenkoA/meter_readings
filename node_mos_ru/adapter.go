@@ -1,11 +1,14 @@
 package node_mos_ru
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/pkg/errors"
+	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 type MosruAdapter struct {
@@ -23,21 +26,25 @@ func NewMosruAdapter(login, password string) *MosruAdapter {
 
 func (m *MosruAdapter) GetMeters(ctx context.Context) ([]string, error) {
 	pathToNode := os.Getenv("NODE_PATH")
-
+	scriptRoot := os.Getenv("NODE_SCRIPT_ROOT")
+	_ = scriptRoot
 	if len(m.meters) > 0 {
 		return m.meters, nil
 	}
 
-	cmd := exec.CommandContext(ctx, pathToNode, "./node_mos_ru/main.js", "getMeters", m.login, m.password)
+	cmd := exec.CommandContext(ctx, pathToNode, filepath.Join(scriptRoot, "main.js"), "getMeters", m.login, m.password)
 	_ = cmd.Wait()
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &outBuf, &errBuf
+
+	if err := cmd.Run(); err != nil {
+		log.Printf("STDERR:\n%s", errBuf.String())
 		return nil, errors.Wrap(err, "running browser script")
 	}
 
 	var data []string
-	err = json.Unmarshal(output, &data)
+	err := json.Unmarshal(outBuf.Bytes(), &data)
 
 	m.meters = data
 	return data, err

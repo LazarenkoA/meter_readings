@@ -15,6 +15,21 @@ import (
 
 func main() {
 	_ = godotenv.Load()
+	//
+	//ds, _ := deepseek.NewDSClient(context.Background(), os.Getenv("DEEPSEEK_API_KEY"))
+	//res, _ := ds.GetReminderCharacteristics("напомни завтра утром позавтракать")
+	//fmt.Println(res)
+	//
+	//res, _ = ds.GetReminderCharacteristics("напомни в сл. пятницу в 21ч встреча")
+	//fmt.Println(res)
+	//
+	//res, _ = ds.GetReminderCharacteristics("напоминай каждый месяц 10ч о том что нужно подать показания счетчиков")
+	//fmt.Println(res)
+	//
+	//res, _ = ds.GetReminderCharacteristics("привет как дела")
+	//fmt.Println(res)
+	//
+	//return
 
 	var settings tbot.BotSettings
 	if err := envconfig.Process("", &settings); err != nil {

@@ -2,9 +2,11 @@ package tbot
 
 import (
 	"context"
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"log"
+	"meter_readings/deepseek"
 	"meter_readings/mosenergosbyt"
 	"meter_readings/node_mos_ru"
 	"meter_readings/storage"
@@ -22,11 +24,13 @@ type tBot struct {
 	msgInterceptor msgInterceptor
 	mosenergosbyt  IMosenergosbyt
 	mosRu          IMos
+	deepseek       IDeepseek
 	storage        storage.IStorage
 	ctx            context.Context
 	closer         *Closer
 	ai             IAI
 	pass           string
+	reminder       *Reminder
 }
 
 func NewBot(ctx context.Context, settings BotSettings, opt ...options) (*tBot, error) {
@@ -35,9 +39,11 @@ func NewBot(ctx context.Context, settings BotSettings, opt ...options) (*tBot, e
 		return nil, err
 	}
 
+	deepseek, _ := deepseek.NewDSClient(ctx, settings.DeepseekAPI)
 	tb := &tBot{
 		mosenergosbyt:  mosenergosbyt.NewClient(ctx, settings.MosELogin, settings.MosEPass),
 		mosRu:          node_mos_ru.NewMosruAdapter(settings.MosRULogin, settings.MosRUPass),
+		deepseek:       deepseek,
 		ctx:            ctx,
 		bot:            bot,
 		callback:       make(TCallback),
@@ -51,6 +57,7 @@ func NewBot(ctx context.Context, settings BotSettings, opt ...options) (*tBot, e
 		f(tb)
 	}
 
+	tb.reminder = NewReminder(tb)
 	return tb, nil
 }
 
@@ -60,6 +67,7 @@ func (t *tBot) Run() {
 	}()
 
 	t.scheduleEnergosbytMessages()
+	t.reminder.restoreReminderData()
 
 	wdUpdate := t.run()
 	for {
@@ -86,12 +94,20 @@ func (t *tBot) Run() {
 			continue
 		}
 
-		command := t.getMessage(update).Command()
+		command := msg.Command()
 		switch command {
 		case "start":
 			t.start(msg.Chat.ID, msg)
 			continue
 		}
+
+		go func() {
+			if err := t.reminder.recognizeReminder(msg.Text, msg.Chat.ID); err != nil {
+				t.sendMsg(fmt.Sprintf("Ошибка: %v", err), msg.Chat.ID, Buttons{})
+			} else {
+				t.sendMsg("👍🏻", msg.Chat.ID, Buttons{})
+			}
+		}()
 	}
 }
 
