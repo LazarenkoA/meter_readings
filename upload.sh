@@ -13,6 +13,11 @@ echo "Сборка Go-программы..."
 # Загрузка по SFTP
 sftp -i /mnt/d/ssh/mini/key artem@"$REMOTE_IP" <<EOF
 put meter_bot /var/tmp/
+mkdir /var/tmp/node_mos_ru
+put node_mos_ru/client.js /var/tmp/node_mos_ru/client.js
+put node_mos_ru/main.js /var/tmp/node_mos_ru/main.js
+put node_mos_ru/package.json /var/tmp/node_mos_ru/package.json
+put node_mos_ru/package-lock.json /var/tmp/node_mos_ru/package-lock.json
 exit
 EOF
 

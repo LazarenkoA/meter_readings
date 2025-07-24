@@ -3,9 +3,10 @@ package deepseek
 import "time"
 
 type ReminderCharacteristics struct {
-	Topic     string    `json:"topic"`
-	RunAt     string    `json:"run_at"`
-	RunAtTime time.Time `json:"-"`
-	Cron      string    `json:"cron"`
-	Error     string    `json:"error"`
+	Topic     string
+	RunAt     string `json:"run_at"`
+	RunAtTime time.Time
+	Cron      string
+	Error     string
+	Completed bool
 }

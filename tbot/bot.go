@@ -6,6 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"log"
+	"meter_readings/deepgram"
 	"meter_readings/deepseek"
 	"meter_readings/mosenergosbyt"
 	"meter_readings/node_mos_ru"
@@ -25,6 +26,7 @@ type tBot struct {
 	mosenergosbyt  IMosenergosbyt
 	mosRu          IMos
 	deepseek       IDeepseek
+	deepgram       IDeepgram
 	storage        storage.IStorage
 	ctx            context.Context
 	closer         *Closer
@@ -43,6 +45,7 @@ func NewBot(ctx context.Context, settings BotSettings, opt ...options) (*tBot, e
 	tb := &tBot{
 		mosenergosbyt:  mosenergosbyt.NewClient(ctx, settings.MosELogin, settings.MosEPass),
 		mosRu:          node_mos_ru.NewMosruAdapter(settings.MosRULogin, settings.MosRUPass),
+		deepgram:       deepgram.NewDeepgram(settings.DeepgramKey),
 		deepseek:       deepseek,
 		ctx:            ctx,
 		bot:            bot,
@@ -58,6 +61,8 @@ func NewBot(ctx context.Context, settings BotSettings, opt ...options) (*tBot, e
 	}
 
 	tb.reminder = NewReminder(tb)
+	tb.closer.Append("storeReminderData", tb.reminder.StoreReminderData)
+
 	return tb, nil
 }
 
@@ -101,13 +106,26 @@ func (t *tBot) Run() {
 			continue
 		}
 
-		go func() {
-			if err := t.reminder.recognizeReminder(msg.Text, msg.Chat.ID); err != nil {
-				t.sendMsg(fmt.Sprintf("Ошибка: %v", err), msg.Chat.ID, Buttons{})
-			} else {
-				t.sendMsg("👍🏻", msg.Chat.ID, Buttons{})
+		if msg.Voice != nil {
+			if filePath, err := t.downloadAudio(msg.Voice.FileID); err == nil {
+				msg.Text, err = t.deepgram.STT(t.ctx, filePath)
+				if err != nil {
+					log.Println("deepgram STT error: ", err)
+				}
+				os.Remove(filePath)
 			}
-		}()
+		}
+
+		if msg.Text != "" {
+			go func() {
+				if err := t.reminder.recognizeReminder(msg.Text, msg.Chat.ID); err != nil {
+					t.sendMsg(fmt.Sprintf("Ошибка: %v", err), msg.Chat.ID, Buttons{})
+				} else {
+					t.deleteMessage(msg.Chat.ID, msg.MessageID)
+					t.sendTTLMsg("👍🏻", msg.Chat.ID, Buttons{}, time.Second*10)
+				}
+			}()
+		}
 	}
 }
 
@@ -205,6 +223,16 @@ func (t *tBot) editMsg(msg *tgbotapi.Message, txt string, buttons Buttons) (*tgb
 	}
 
 	return t.createButtonsAndSend(&editmsg, buttons)
+}
+
+func (t *tBot) downloadAudio(fileID string) (string, error) {
+	file, err := t.bot.GetFile(tgbotapi.FileConfig{FileID: fileID})
+	if err != nil {
+		return "", errors.Wrap(err, "bot GetFile")
+	}
+
+	fileURL := file.Link(t.bot.Token)
+	return downloadFile(t.ctx, fileURL)
 }
 
 func WithAI(ai IAI) options {

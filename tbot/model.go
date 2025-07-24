@@ -13,6 +13,8 @@ type BotSettings struct {
 	MosRULogin  string `envconfig:"MOS_RU_LOGIN"`
 	MosRUPass   string `envconfig:"MOS_RU_PASS"`
 	DeepseekAPI string `envconfig:"DEEPSEEK_API_KEY"`
+	GigaAPIKey  string `envconfig:"GIGA_API_KEY"`
+	DeepgramKey string `envconfig:"DEEPGRAM_KEY"`
 }
 
 type meter struct {
@@ -37,4 +39,8 @@ type IAI interface {
 
 type IDeepseek interface {
 	GetReminderCharacteristics(msgText string) (*deepseek.ReminderCharacteristics, error)
+}
+
+type IDeepgram interface {
+	STT(ctx context.Context, filePath string) (string, error)
 }

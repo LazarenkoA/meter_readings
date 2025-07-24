@@ -3,7 +3,7 @@ package tbot
 import "sync"
 
 type Closer struct {
-	handlers map[string]func()
+	handlers map[string]func() // мапа что б не добавлялось дубликатов
 	mx       sync.RWMutex
 }
 

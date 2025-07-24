@@ -15,31 +15,22 @@ import (
 
 func main() {
 	_ = godotenv.Load()
-	//
-	//ds, _ := deepseek.NewDSClient(context.Background(), os.Getenv("DEEPSEEK_API_KEY"))
-	//res, _ := ds.GetReminderCharacteristics("напомни завтра утром позавтракать")
-	//fmt.Println(res)
-	//
-	//res, _ = ds.GetReminderCharacteristics("напомни в сл. пятницу в 21ч встреча")
-	//fmt.Println(res)
-	//
-	//res, _ = ds.GetReminderCharacteristics("напоминай каждый месяц 10ч о том что нужно подать показания счетчиков")
-	//fmt.Println(res)
-	//
-	//res, _ = ds.GetReminderCharacteristics("привет как дела")
-	//fmt.Println(res)
-	//
-	//return
 
 	var settings tbot.BotSettings
 	if err := envconfig.Process("", &settings); err != nil {
 		log.Fatalf("failed to load minio connect configuration: %s", err)
 	}
 
+	//cli := salutespeech.NewClient(context.Background(), settings.GigaAPIKey, salutespeech.WithHttpClient(&http.Client{Transport: &http.Transport{
+	//	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	//}}))
+	//err := cli.GetToken()
+	//fmt.Println(err)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	go shutdown(cancel)
 
-	g, _ := giga.NewGigaClient(context.Background(), os.Getenv("GIGA_API_KEY"))
+	g, _ := giga.NewGigaClient(context.Background(), settings.GigaAPIKey)
 	bot, err := tbot.NewBot(ctx, settings, tbot.WithAI(g))
 	if err != nil {
 		fmt.Println("Error:", err)

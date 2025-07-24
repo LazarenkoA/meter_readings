@@ -16,7 +16,7 @@ type Reminder struct {
 	Mx           sync.RWMutex
 	DsMx         sync.Mutex
 	bot          *tBot
-	timer        *time.Timer
+	timer        []*time.Timer
 }
 
 type reminder map[int64][]*deepseek.ReminderCharacteristics
@@ -30,6 +30,7 @@ func NewReminder(bot *tBot) *Reminder {
 		bot:          bot,
 		cron:         cron.New(),
 		reminderData: reminder{},
+		timer:        make([]*time.Timer, 0),
 	}
 }
 
@@ -51,14 +52,29 @@ func (r *Reminder) recognizeReminder(txt string, chatID int64) error {
 
 	r.Mx.Lock()
 	r.reminderData[chatID] = append(r.reminderData[chatID], info)
-	if err := r.bot.storage.StoreObject("reminder", r.reminderData); err != nil {
-		r.Mx.Unlock()
-		return err
-	}
 	r.Mx.Unlock()
+
+	r.StoreReminderData()
 
 	r.reminderReStart()
 	return nil
+}
+
+func (r *Reminder) StoreReminderData() {
+	r.Mx.Lock()
+	defer r.Mx.Unlock()
+
+	for k, rInfo := range r.reminderData {
+		for i := len(rInfo) - 1; i >= 0; i-- {
+			if rInfo[i].Completed {
+				r.reminderData[k] = append(rInfo[:i], rInfo[i+1:]...)
+			}
+		}
+	}
+
+	if err := r.bot.storage.StoreObject("reminder", r.reminderData); err != nil {
+		log.Println("ERROR: ", err)
+	}
 }
 
 func (r *Reminder) restoreReminderData() {
@@ -78,11 +94,14 @@ func (r *Reminder) restoreReminderData() {
 }
 
 func (r *Reminder) reminderReStart() {
-	if r.timer != nil {
-		r.timer.Stop()
+	for _, t := range r.timer {
+		t.Stop()
 	}
 
 	r.cron.Stop()
+	for _, e := range r.cron.Entries() {
+		r.cron.Remove(e.ID)
+	}
 
 	r.reminderStart()
 }
@@ -94,9 +113,10 @@ func (r *Reminder) reminderStart() {
 	for chatID, rInfo := range r.reminderData {
 		for _, item := range rInfo {
 			if !item.RunAtTime.IsZero() && item.RunAtTime.After(time.Now()) {
-				r.timer = time.AfterFunc(time.Until(item.RunAtTime), func() {
+				r.timer = append(r.timer, time.AfterFunc(time.Until(item.RunAtTime), func() {
 					_, _ = r.bot.sendMsg(item.Topic, chatID, Buttons{})
-				})
+					item.Completed = true
+				}))
 				continue
 			}
 
