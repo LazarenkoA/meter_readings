@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+type reminderInfo struct {
+	topic    string
+	schedule struct {
+		once *struct {
+			when time.Time
+		}
+		repeat *struct {
+			cron string
+		}
+	}
+}
+
 type Reminder struct {
 	cron         *cron.Cron
 	reminderData reminder
@@ -55,7 +67,6 @@ func (r *Reminder) recognizeReminder(txt string, chatID int64) error {
 	r.Mx.Unlock()
 
 	r.StoreReminderData()
-
 	r.reminderReStart()
 	return nil
 }
@@ -67,7 +78,7 @@ func (r *Reminder) StoreReminderData() {
 	for k, rInfo := range r.reminderData {
 		for i := len(rInfo) - 1; i >= 0; i-- {
 			if rInfo[i].Completed {
-				r.reminderData[k] = append(rInfo[:i], rInfo[i+1:]...)
+				r.reminderData[k] = append(append([]*deepseek.ReminderCharacteristics{}, r.reminderData[k][:i]...), r.reminderData[k][i+1:]...)
 			}
 		}
 	}
@@ -134,4 +145,28 @@ func (r *Reminder) reminderStart() {
 	if len(r.cron.Entries()) > 0 {
 		r.cron.Start()
 	}
+}
+
+func (r *Reminder) reminderList(chatID int64) []reminderInfo {
+	r.Mx.RLock()
+	defer r.Mx.RUnlock()
+
+	result := make([]reminderInfo, 0, len(r.reminderData))
+	for _, r := range r.reminderData[chatID] {
+		if r.Completed || !r.RunAtTime.IsZero() && r.RunAtTime.Before(time.Now()) {
+			continue
+		}
+
+		item := reminderInfo{topic: r.Topic}
+		if r.Cron != "" {
+			item.schedule.repeat = &struct{ cron string }{cron: r.Cron}
+		}
+		if !r.RunAtTime.IsZero() {
+			item.schedule.once = &struct{ when time.Time }{when: r.RunAtTime}
+		}
+
+		result = append(result, item)
+	}
+
+	return result
 }

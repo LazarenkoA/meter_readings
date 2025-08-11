@@ -12,9 +12,21 @@ import (
 )
 
 type MosruAdapter struct {
-	meters   []string
+	meters   []map[string]interface{}
 	login    string
 	password string
+}
+
+type ReadingsItem struct {
+	Indication float64 `json:"indication"`
+	DeviceId   string  `json:"device_id"`
+	Period     string  `json:"period"`
+}
+
+type Readings struct {
+	PayerCode string         `json:"payer_code"`
+	Flat      string         `json:"flat"`
+	Items     []ReadingsItem `json:"items"`
 }
 
 func NewMosruAdapter(login, password string) *MosruAdapter {
@@ -24,15 +36,44 @@ func NewMosruAdapter(login, password string) *MosruAdapter {
 	}
 }
 
-func (m *MosruAdapter) GetMeters(ctx context.Context) ([]string, error) {
-	pathToNode := os.Getenv("NODE_PATH")
-	scriptRoot := os.Getenv("NODE_SCRIPT_ROOT")
-	_ = scriptRoot
+func (m *MosruAdapter) GetMeters(ctx context.Context) ([]map[string]interface{}, error) {
 	if len(m.meters) > 0 {
 		return m.meters, nil
 	}
 
-	cmd := exec.CommandContext(ctx, pathToNode, filepath.Join(scriptRoot, "main.js"), "getMeters", m.login, m.password)
+	outData, err := m.run(ctx, "getMeters")
+	if err != nil {
+		return nil, err
+	}
+
+	var data []map[string]interface{}
+	err = json.Unmarshal(outData, &data)
+
+	m.meters = data
+	return data, err
+}
+
+func (m *MosruAdapter) SendReadingsWater(ctx context.Context, data *Readings) error {
+	if len(data.Items) == 0 {
+		return errors.New("no data transmitted")
+	}
+
+	bdata, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = m.run(ctx, "sendMeterReadings", string(bdata))
+	return err
+}
+
+func (m *MosruAdapter) run(ctx context.Context, command string, addParams ...string) ([]byte, error) {
+	pathToNode := os.Getenv("NODE_PATH")
+	scriptRoot := os.Getenv("NODE_SCRIPT_ROOT")
+
+	params := append(append([]string{}, filepath.Join(scriptRoot, "main.js"), command, m.login, m.password), addParams...)
+
+	log.Println("run node script")
+	cmd := exec.CommandContext(ctx, pathToNode, params...)
 	_ = cmd.Wait()
 
 	var outBuf, errBuf bytes.Buffer
@@ -43,14 +84,5 @@ func (m *MosruAdapter) GetMeters(ctx context.Context) ([]string, error) {
 		return nil, errors.Wrap(err, "running browser script")
 	}
 
-	var data []string
-	err := json.Unmarshal(outBuf.Bytes(), &data)
-
-	m.meters = data
-	return data, err
-}
-
-func (m *MosruAdapter) SendReadingsWater(ctx context.Context) error {
-
-	return nil
+	return outBuf.Bytes(), nil
 }

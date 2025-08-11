@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 func castMap[T any](data map[string]interface{}) map[string]T {
@@ -47,4 +48,9 @@ func (t *tBot) downloadFile(fileUrl, baseFileName string) (string, error) {
 	}
 
 	return outFile.Name(), nil
+}
+
+func EndYear() time.Time {
+	n := time.Now()
+	return time.Date(n.Year(), n.Month()+1, 1, 0, 0, 0, 0, n.Location()).Add(-time.Nanosecond)
 }

@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,10 @@ type pipe struct {
 	value   any // произвольное значение для сохранения на шаге
 	handler func(p *pipe, rootMsg *tgbotapi.Message)
 }
+
+var (
+	mapMetersNum sync.Map
+)
 
 func (t *tBot) initPipe() *pipe {
 	metersChoice := make(map[string]*pipe)
@@ -88,7 +93,16 @@ func (t *tBot) getMeters(metersChoice *map[string]*pipe, valueGetter func(curren
 	}
 
 	for _, m := range meters {
-		(*metersChoice)[m] = &pipe{name: m, msg: fmt.Sprintf("Введите значение счетчика %s или отправьте фото счетчика", m), handler: valueGetter}
+		id, _ := m["id"]
+		number, ok := m["number"]
+		if !ok {
+			continue
+		}
+
+		numberString, _ := number.(string)
+		mapMetersNum.Store(numberString, id.(string))
+
+		(*metersChoice)[numberString] = &pipe{name: numberString, msg: fmt.Sprintf("Введите значение счетчика %s или отправьте фото счетчика", numberString), handler: valueGetter}
 	}
 }
 
@@ -102,7 +116,17 @@ func (t *tBot) sendMeter(p *pipe, chatID int64) {
 	if err := t.mosEnergosbytSend(data); err != nil && !errors.Is(err, errIsPlanning) {
 		t.sendMsg(errors.Wrap(err, "mosenergosbyt send error").Error(), chatID, Buttons{})
 	} else if errors.Is(err, errIsPlanning) {
-		t.sendMsg(fmt.Sprintf("Отправка запланирована на %d число", startingEnergosbyt), chatID, Buttons{})
+		t.sendTTLMsg(fmt.Sprintf("Отправка электроэнергии запланирована на %d число", startingEnergosbyt), chatID, Buttons{}, time.Second*30)
+	} else {
+		t.sendTTLMsg("Показания по электроэнергии успешно отправлены", chatID, Buttons{}, time.Second*10)
+	}
+
+	if err := t.mosRuSend(data); err != nil && !errors.Is(err, errIsPlanning) {
+		t.sendMsg(errors.Wrap(err, "mosRuSend send error").Error(), chatID, Buttons{})
+	} else if errors.Is(err, errIsPlanning) {
+		t.sendTTLMsg(fmt.Sprintf("Отправка воды запланирована на %d число", startingVodokanal), chatID, Buttons{}, time.Second*30)
+	} else {
+		t.sendTTLMsg("Показания по воде успешно отправлены", chatID, Buttons{}, time.Second*10)
 	}
 }
 

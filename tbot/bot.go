@@ -72,6 +72,7 @@ func (t *tBot) Run() {
 	}()
 
 	t.scheduleEnergosbytMessages()
+	t.scheduleVodokanalMessages()
 	t.reminder.restoreReminderData()
 
 	wdUpdate := t.run()
@@ -102,17 +103,22 @@ func (t *tBot) Run() {
 		command := msg.Command()
 		switch command {
 		case "start":
-			t.start(msg.Chat.ID, msg)
+			t.start(msg)
+			continue
+		case "reminder_list":
+			t.reminderList(msg.Chat.ID)
 			continue
 		}
 
-		if msg.Voice != nil {
+		if msg.Voice != nil && t.deepgram != nil {
 			if filePath, err := t.downloadAudio(msg.Voice.FileID); err == nil {
 				msg.Text, err = t.deepgram.STT(t.ctx, filePath)
 				if err != nil {
 					log.Println("deepgram STT error: ", err)
 				}
 				os.Remove(filePath)
+			} else {
+				log.Println("download voice error: ", err)
 			}
 		}
 
@@ -226,6 +232,8 @@ func (t *tBot) editMsg(msg *tgbotapi.Message, txt string, buttons Buttons) (*tgb
 }
 
 func (t *tBot) downloadAudio(fileID string) (string, error) {
+	log.Println("download voice message")
+
 	file, err := t.bot.GetFile(tgbotapi.FileConfig{FileID: fileID})
 	if err != nil {
 		return "", errors.Wrap(err, "bot GetFile")

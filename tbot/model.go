@@ -3,6 +3,7 @@ package tbot
 import (
 	"context"
 	"meter_readings/deepseek"
+	"meter_readings/node_mos_ru"
 )
 
 type BotSettings struct {
@@ -29,8 +30,8 @@ type IMosenergosbyt interface {
 }
 
 type IMos interface {
-	SendReadingsWater(ctx context.Context) error
-	GetMeters(ctx context.Context) ([]string, error)
+	SendReadingsWater(ctx context.Context, data *node_mos_ru.Readings) error
+	GetMeters(ctx context.Context) ([]map[string]interface{}, error)
 }
 
 type IAI interface {

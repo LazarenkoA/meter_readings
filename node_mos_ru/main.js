@@ -1,10 +1,10 @@
 const funcs = require('./client');
 const {close} = require("./client");
-const [,,func,login, password] = process.argv;
+const [,,func,...args] = process.argv;
 
 (async () => {
     if (funcs[func]) {
-        await funcs[func](login, password);
+        await funcs[func](...args);
         await close()
 
         return

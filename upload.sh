@@ -1,4 +1,4 @@
-#!/bin/bash
+  #!/bin/bash
 
 # Проверка наличия переменной окружения
 if [ -z "$REMOTE_IP" ]; then

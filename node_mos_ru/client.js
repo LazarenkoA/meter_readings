@@ -4,6 +4,7 @@ const fs = require("fs");
 const baseURL = 'https://www.mos.ru/';
 const readingsURL = 'https://www.mos.ru/services/pokazaniya-vodi-i-tepla/new/';
 const deviceURL = 'https://www.mos.ru/api/utility-meter/v1/device?flat=82&payer_code=2290715619';
+const sendReadingsURL = 'https://www.mos.ru/api/utility-meter/v1/device/indication/application';
 
 let browser;
 let page;
@@ -123,11 +124,39 @@ async function getMeters(log, pas) {
 
     let meterNumbers = [];
     for(const dev of data?.data?.active ?? []) {
-        meterNumbers.push(dev?.number)
+        meterNumbers.push({'number': dev?.number, 'id': dev?.id})
     }
 
     console.log(JSON.stringify(meterNumbers));
     return meterNumbers;
+}
+
+/**
+ * Отправляет показания счетчиков
+ * @param {string} data - в формате json
+ * @param {string} log
+ * @param {string} pas
+ * */
+async function sendMeterReadings(log, pas, data) {
+    await login(log, pas)
+
+    await page.evaluate(async (sendReadingsURL, data) => {
+        const response = await fetch(sendReadingsURL, {
+            method: 'POST',
+            credentials: 'same-origin', // чтобы отправить куки из текущей сессии
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: data
+        });
+
+        if (!response.ok) {
+            throw new Error('HTTP error ' + response.status);
+        }
+    }, sendReadingsURL, data);
+
+
 }
 
 async function close() {
@@ -142,5 +171,6 @@ async function close() {
 module.exports = {
     sendReadingsWater,
     getMeters,
+    sendMeterReadings,
     close,
 };
