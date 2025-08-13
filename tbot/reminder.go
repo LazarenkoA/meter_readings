@@ -123,7 +123,7 @@ func (r *Reminder) reminderStart() {
 
 	for chatID, rInfo := range r.reminderData {
 		for _, item := range rInfo {
-			if !item.RunAtTime.IsZero() && item.RunAtTime.After(time.Now()) {
+			if !item.RunAtTime.IsZero() && (item.RunAtTime.After(time.Now()) || (!item.Completed && item.RunAtTime.Before(time.Now()))) { // или предстоит или прошло, но по какой-то причине не отмечено что выполнено
 				r.timer = append(r.timer, time.AfterFunc(time.Until(item.RunAtTime), func() {
 					_, _ = r.bot.sendMsg(item.Topic, chatID, Buttons{})
 					item.Completed = true

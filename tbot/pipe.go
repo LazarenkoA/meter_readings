@@ -202,9 +202,23 @@ func (t *tBot) readMeter() string {
 
 		b.WriteString("Электричество:\n")
 		T1, T2, T3 := v.(map[any]any)["T1"].(int), v.(map[any]any)["T2"].(int), v.(map[any]any)["T3"].(int)
-		b.WriteString(fmt.Sprintf("\t%d\n", T1))
-		b.WriteString(fmt.Sprintf("\t%d\n", T2))
-		b.WriteString(fmt.Sprintf("\t%d\n", T3))
+		b.WriteString(fmt.Sprintf("\tT1 - %d\n", T1))
+		b.WriteString(fmt.Sprintf("\tT2 - %d\n", T2))
+		b.WriteString(fmt.Sprintf("\tT3 - %d\n", T3))
+	}
+
+	data, err = t.storage.RestoreObject("vodokanal")
+	if err == nil {
+		v, ok := data["water"]
+		if !ok {
+			log.Println("bad file struct")
+			return ""
+		}
+
+		b.WriteString("Вода:\n")
+		for k, v := range v.(map[interface{}]interface{}) {
+			b.WriteString(fmt.Sprintf("\t%v - %v\n", k, v))
+		}
 	}
 
 	return b.String()

@@ -8,6 +8,7 @@ import (
 	"log"
 	"meter_readings/node_mos_ru"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -68,6 +69,10 @@ func (t *tBot) start(msg *tgbotapi.Message) {
 func (t *tBot) reminderList(chatID int64) {
 	list := t.reminder.reminderList(chatID)
 	str := strings.Builder{}
+
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].schedule.once != nil && list[j].schedule.once != nil && list[i].schedule.once.when.Before(list[j].schedule.once.when)
+	})
 
 	var pReminders []string
 	var oReminders []string
