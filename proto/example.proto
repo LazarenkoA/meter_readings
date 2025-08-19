@@ -4,6 +4,7 @@ package test;
 
 import "proto/custom.proto";
 import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -19,6 +20,22 @@ service TestHTTPService {
     option (google.api.http) = {
       post: "/api/v1/test"
     };
+
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      responses: {
+        key: "200"
+        value: {
+          description: "Booking created successfully"
+        }
+      }
+      responses: {
+        key: "400"
+        value: {
+          description: "Invalid request"
+        }
+      }
+    };
+    
   }
 
   // отправка тестового get запроса
