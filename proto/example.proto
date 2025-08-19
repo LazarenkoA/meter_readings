@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package test;
+
+import "custom.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "./gen";
+option (test.configurationCatalog)  = "D:\\1";
+
+// fdfd
+service TestHTTPService {
+  option (baseURL) = "test";
+
+  rpc TestPOST(Request) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/test"
+    };
+  }
+
+  // отправка тестового get запроса
+  rpc TestGET(Request) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      get: "/api/v1/GET_test"
+    };
+  }
+}
+
+// тестовое сообщение
+message Request {
+  string test_fld = 1; // тестовое поле
+  google.protobuf.Timestamp test_fld2 = 2 [(required) = true];
+}
